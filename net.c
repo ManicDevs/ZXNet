@@ -7,10 +7,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netdb.h>
 
 #include "xhdrs/includes.h"
 #include "xhdrs/net.h"
@@ -36,7 +36,43 @@ int net_fdsend(int sockfd, int type, char *buffer)
 	if(send(sockfd, &pkt, sizeof(pkt), MSG_NOSIGNAL) < 0)
 	{
 		util_msgc("Error", "Unable to send Packet!");
-		return 1;
+		return -1;
+	}
+	
+	return 0;
+}
+
+int net_fdbroadcast(int sockfd, int type, char *buffer)
+{
+	int i;
+	
+	struct Packet pkt;
+	
+	memset(&pkt, 0, sizeof(pkt));
+	
+	pkt.type = type;
+	pkt.timestamp = time(NULL);
+	
+	strcpy(pkt.msg.payload, buffer);
+	pkt.msg.length = strlen(pkt.msg.payload);
+	sha256(pkt.msg.payload, pkt.msg.sha256);
+	
+	util_strxor(pkt.msg.payload, pkt.msg.payload, pkt.msg.length);
+	
+	for(i = 0; i < MAXFDS; i++)
+	{
+		struct Client *client = &(clients[i]);
+		
+		if(i == sockfd || !client->connected)
+			continue;
+		
+		if(send(i, &pkt, sizeof(pkt), MSG_NOSIGNAL) < 0)
+		{
+			util_msgc("Error", "Unable to send Packet on fd#%d", i);
+			continue;
+		}
+		
+		util_msgc("Info", "Broadcasting to fd#%d", i);
 	}
 	
 	return 0;

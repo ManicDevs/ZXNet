@@ -3,6 +3,8 @@
 
 int net_fdsend(int sockfd, int type, char *buffer);
 
+int net_fdbroadcast(int sockfd, int type, char *buffer);
+
 int net_set_nonblocking(int sockfd);
 
 int net_bind(const char *portno, int protocol);
