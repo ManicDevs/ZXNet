@@ -236,7 +236,6 @@ void *epollEventLoop(void *_)
 							case VERSION:
 								util_msgc("Info", "Version from fd#%d", thefd);
 								strcpy(client->version, pkt.msg.payload);
-								util_msgc("Version", "%s", client->version);
 							break;
 							
 							case MESSAGE:
