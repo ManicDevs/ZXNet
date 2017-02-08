@@ -209,26 +209,14 @@ int net_connect(const char *addr, const char *portno, int protocol)
 				strerror(errno));
 		}
 		
-		if(protocol == IPPROTO_TCP)
+		if((err = connect(sockfd, rp->ai_addr, rp->ai_addrlen)) < 0)
 		{
-			if((err = connect(sockfd, rp->ai_addr, rp->ai_addrlen)) < 0)
-			{
-				close(sockfd);
-				sockfd = -1;
-			}
-			if(err == 0)
-				break;
+			close(sockfd);
+			sockfd = -1;
 		}
-		else if(protocol == IPPROTO_UDP)
-		{
-			if((err = sendto(sockfd, NULL, 0, 0, rp->ai_addr, rp->ai_addrlen)) < 0)
-			{
-				close(sockfd);
-				sockfd = -1;
-			}
-			if(err == 0)
-				break;
-		}
+		
+		if(err == 0)
+			break;
 		
 		//close(sockfd);
 	}
@@ -237,10 +225,7 @@ int net_connect(const char *addr, const char *portno, int protocol)
 	
 	if(sockfd < 0)
 	{
-		util_msgc("Error", (protocol == IPPROTO_TCP)?
-			"Failed to connect: %s":
-			"Failed to sendto: %s", 
-			strerror(errno));
+		util_msgc("Error", "Failed to connect: %s", strerror(errno));
 		return -1;
 	}
 	
