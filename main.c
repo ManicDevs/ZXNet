@@ -230,11 +230,6 @@ void *epollEventLoop(void *_)
 								util_msgc("Info", "Pong from fd#%d", thefd);
 							break;
 							
-							case VERSION:
-								util_msgc("Info", "Version from fd#%d", thefd);
-								strcpy(client->version, pkt.msg.payload);
-							break;
-							
 							case MESSAGE:
 								util_msgc("Info", "Message from fd#%d", thefd);
 								util_msgc("Message", "Payload: %s", pkt.msg.payload);
