@@ -134,7 +134,10 @@ int net_bind(const char *portno, int protocol)
 			continue;
 		
 		if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(int)) < 0)
-			perror("setsockopt");
+		{
+			util_msgc("Warning", "Unable to set SO_REUSEADDR: %s",  
+				strerror(errno));
+		}
 		
 		err = bind(sockfd, rp->ai_addr, rp->ai_addrlen);
 		if(err == 0)
