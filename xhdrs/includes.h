@@ -11,6 +11,7 @@ struct Client
 {
 	int connected;
 	uint32_t ipaddr;
+	char version[32];
 } client_t;
 
 struct Client clients[MAXFDS];

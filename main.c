@@ -188,6 +188,8 @@ void *epollEventLoop(void *_)
 					clients[infd].connected = 1;
 					
 					net_fdsend(infd, PING, "");
+					sleep(1);
+					net_fdsend(infd, VERSION, "");
 				} // While
 				continue;
 			}
@@ -216,6 +218,9 @@ void *epollEventLoop(void *_)
 						
 						memcpy(&pkt, pktbuf, buflen);
 						
+						util_strxor(pkt.msg.payload, pkt.msg.payload, 
+							pkt.msg.length);
+						
 						ip4.s_addr = client->ipaddr;
 						
 						// Packet received
@@ -228,9 +233,15 @@ void *epollEventLoop(void *_)
 								util_msgc("Info", "Pong from fd#%d", thefd);
 							break;
 							
-							case ERROR:
-								util_msgc("Info", "Error from fd#%d", thefd);
-								net_fdsend(thefd, ERROR, "ACK");
+							case VERSION:
+								util_msgc("Info", "Version from fd#%d", thefd);
+								strcpy(client->version, pkt.msg.payload);
+								util_msgc("Version", "%s", client->version);
+							break;
+							
+							case MESSAGE:
+								util_msgc("Info", "Message from fd#%d", thefd);
+								util_msgc("Message", "Payload: %s", pkt.msg.payload);
 							break;
 						}
 					} // While

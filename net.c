@@ -54,13 +54,12 @@ int net_fdbroadcast(int sockfd, int type, char *buffer)
 	pkt.msg.length = strlen(pkt.msg.payload);
 	sha256(pkt.msg.payload, pkt.msg.sha256);
 	
-	util_strxor(pkt.msg.payload, pkt.msg.payload, pkt.msg.length);
+	//util_strxor(pkt.msg.payload, pkt.msg.payload, pkt.msg.length);
 	
 	for(i = 0; i < MAXFDS; i++)
 	{
-		size_t buflen;
-		
-		struct Packet pkt;
+		char pktbuf[512];
+
 		struct in_addr ip4;
 		struct Client *client = &(clients[i]);
 		
@@ -72,7 +71,7 @@ int net_fdbroadcast(int sockfd, int type, char *buffer)
 		
 		ip4.s_addr = client->ipaddr;
 		
-		if((buflen = read(i, NULL, 1)) == 0)
+		if(read(i, pktbuf, 1) == 0)
 		{
 			util_msgc("Info", "Removing (host=%s, fd#%d)", inet_ntoa(ip4), i);
 			client->ipaddr = 0;
