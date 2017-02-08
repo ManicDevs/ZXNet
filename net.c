@@ -34,10 +34,7 @@ int net_fdsend(int sockfd, int type, char *buffer)
 	util_strxor(pkt.msg.payload, pkt.msg.payload, pkt.msg.length);
 	
 	if(send(sockfd, &pkt, sizeof(pkt), MSG_NOSIGNAL) < 0)
-	{
-		util_msgc("Error", "Unable to send Packet!");
 		return -1;
-	}
 	
 	return 0;
 }
@@ -61,18 +58,31 @@ int net_fdbroadcast(int sockfd, int type, char *buffer)
 	
 	for(i = 0; i < MAXFDS; i++)
 	{
+		size_t buflen;
+		
+		struct Packet pkt;
+		struct in_addr ip4;
 		struct Client *client = &(clients[i]);
 		
 		if(i == sockfd || !client->connected)
 			continue;
 		
 		if(send(i, &pkt, sizeof(pkt), MSG_NOSIGNAL) < 0)
+			continue;
+		
+		ip4.s_addr = client->ipaddr;
+		
+		if((buflen = read(i, NULL, 1)) == 0)
 		{
-			util_msgc("Error", "Unable to send Packet on fd#%d", i);
+			util_msgc("Info", "Removing (host=%s, fd#%d)", inet_ntoa(ip4), i);
+			client->ipaddr = 0;
+			client->connected = 0;
+			close(i);
 			continue;
 		}
 		
-		util_msgc("Info", "Broadcasting to fd#%d", i);
+		util_msgc("Info", "Broadcasting %s "
+			"(host=%s, fd#%d)", util_type2str(type), inet_ntoa(ip4), i);
 	}
 	
 	return 0;

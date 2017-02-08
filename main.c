@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include <netdb.h>
+#include <arpa/inet.h>
 #include <sys/epoll.h>
 
 #include "xhdrs/includes.h"
@@ -26,8 +27,8 @@ uint32_t table_key = 0xdeadbeef; // util_strxor; For packets only?
 
 pthread_t epollEventThread[MAXTHREADS];
 
-static volatile int epollFD = -1;
-static volatile int listenFD = -1;
+static int epollFD = -1;
+static int listenFD = -1;
 static char uniq_id[32] = "";
 
 static void init_exit(void)
@@ -53,14 +54,19 @@ static void init_signals(void)
 	struct sigaction sa;
 	sigset_t ss;
 	
+	// Implement sigexit on Ctrl+C
 	sigemptyset(&ss);
-	
 	sa.sa_handler = sigexit;
 	sa.sa_mask = ss;
 	sa.sa_flags = 0;
 	sigaction(SIGINT, &sa, 0);
 	
-	signal(SIGPIPE, SIG_IGN); // Ignore broken pipes from Kernel
+	// Ignore broken pipes from Kernel
+	sigemptyset(&ss);
+	sa.sa_handler = SIG_IGN;
+	sa.sa_mask = ss;
+	sa.sa_flags = 0;
+	sigaction(SIGPIPE, &sa, 0);
 	
 	util_msgc("Info", "Initiated Signals!");
 }
@@ -108,6 +114,7 @@ void *epollEventLoop(void *_)
 {
 	int n, i, err;
 	
+	struct Packet pkt;
 	struct epoll_event event;
 	struct epoll_event *events;
 	
@@ -121,6 +128,7 @@ void *epollEventLoop(void *_)
 				(events[i].events & EPOLLHUP) || 
 				(!(events[i].events & EPOLLIN)))
 			{
+				clients[events[i].data.fd].ipaddr = 0;
 				clients[events[i].data.fd].connected = 0;
 				close(events[i].data.fd);
 				continue;
@@ -151,14 +159,11 @@ void *epollEventLoop(void *_)
 						hbuf, sizeof(hbuf), sbuf, sizeof(sbuf), 
 						NI_NUMERICHOST | NI_NUMERICSERV);
 					
-					if(err == 0)
-						util_msgc("Info", "Accepted client on fd#%d | "
-							"(host=%s, port=%s)", infd, hbuf, sbuf);
-					
-					clients[infd].ipaddr = ((struct sockaddr_in *)&in_addr)->sin_addr.s_addr;
+					if(err != 0)
+						break;
 					
 					err = net_set_nonblocking(infd);
-					if(err == -1)
+					if(err < 0)
 					{
 						close(infd);
 						break;
@@ -169,17 +174,19 @@ void *epollEventLoop(void *_)
 					event.events = EPOLLIN | EPOLLET;
 					
 					err = epoll_ctl(epollFD, EPOLL_CTL_ADD, infd, &event);
-					if(err == -1)
+					if(err < 0)
 					{
-						perror("epoll_ctl");
 						close(infd);
 						break;
 					}
 					
-					clients[infd].sockfd = infd;
+					util_msgc("Info", "Adding "
+						"(host=%s, fd#%d)", hbuf, infd);
+					
+					clients[infd].ipaddr = ((struct sockaddr_in*)&in_addr)->
+						sin_addr.s_addr;
 					clients[infd].connected = 1;
 					
-					util_msgc("Info", "Pinging new client on fd#%d", infd);
 					net_fdsend(infd, PING, "");
 				} // While
 				continue;
@@ -187,36 +194,33 @@ void *epollEventLoop(void *_)
 			else
 			{
 				int done = 0, thefd = events[i].data.fd;
+				ssize_t buflen;
+				char pktbuf[512];
 				
+				struct in_addr ip4;
 				struct Client *client = &(clients[thefd]);
 				
 				client->connected = 1;
 				while(!exiting)
 				{
-					ssize_t buflen;
-					char pktbuf[512];
-					
-					struct Packet pkt;
-					
-					memset(pktbuf, 0, sizeof(pktbuf));
+					//memset(pktbuf, 0, sizeof(pktbuf));
 					
 					while(memset(pktbuf, 0, sizeof(pktbuf)) && 
-						(buflen = recv(thefd, pktbuf, sizeof(pktbuf), 0)))
+						(buflen = recv(thefd, pktbuf, sizeof(pktbuf), MSG_NOSIGNAL)))
 					{
 						if(exiting)
 							break;
 						
 						if(buflen != sizeof(struct Packet))
-						{
-							//done = 1;
 							break;
-						}
 						
 						memcpy(&pkt, pktbuf, buflen);
 						
+						ip4.s_addr = client->ipaddr;
+						
 						// Packet received
-						util_msgc("Info", "We've received a %s", 
-							util_type2str(pkt.type));
+						util_msgc("Info", "Received a %s (host=%s, fd#%d)", 
+							util_type2str(pkt.type), inet_ntoa(ip4), thefd);
 						
 						switch(pkt.type)
 						{
@@ -229,7 +233,7 @@ void *epollEventLoop(void *_)
 								net_fdsend(thefd, ERROR, "ACK");
 							break;
 						}
-					}
+					} // While
 					
 					if(buflen == -1)
 					{
@@ -243,6 +247,7 @@ void *epollEventLoop(void *_)
 				
 				if(done)
 				{
+					client->ipaddr = 0;
 					client->connected = 0;
 					close(thefd);
 				}
@@ -332,8 +337,8 @@ int main(int argc, char *argv[])
 	
 	while(!exiting)
 	{
-		net_fdbroadcast(-1, PING, "");
-		util_sleep(30);
+		net_fdbroadcast(listenFD, PING, "");
+		util_sleep(10);
 	}
 	
 	close(listenFD);

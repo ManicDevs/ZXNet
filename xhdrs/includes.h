@@ -7,8 +7,8 @@
 #define MAXFDS 100000
 #define MAXTHREADS 10
 
-struct Client {
-	int sockfd;
+struct Client
+{
 	int connected;
 	uint32_t ipaddr;
 } client_t;
