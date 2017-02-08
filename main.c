@@ -3,7 +3,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -188,8 +187,6 @@ void *epollEventLoop(void *_)
 					clients[infd].connected = 1;
 					
 					net_fdsend(infd, PING, "");
-					sleep(1);
-					net_fdsend(infd, VERSION, "");
 				} // While
 				continue;
 			}
