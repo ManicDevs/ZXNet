@@ -137,19 +137,20 @@ void *epollEventLoop(void *_)
 				while(!exiting)
 				{
 					int /*ipIdx,*/ infd = -1;//, dupe = 0;
-					char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
+					size_t buflen;
+					char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV], pktbuf[512];
 					
 					struct sockaddr in_addr;
 					socklen_t in_len = sizeof(in_addr);
 					
 					infd = accept(listenFD, &in_addr, &in_len);
-					if(infd == -1)
+					if(infd < 0)
 					{
 						if((errno == EAGAIN) || (errno == EWOULDBLOCK))
 							break;
 						else
 						{
-							perror("accept");
+							util_msgc("Error", "Failed on accept!");
 							break;
 						}
 					}
@@ -159,10 +160,28 @@ void *epollEventLoop(void *_)
 						NI_NUMERICHOST | NI_NUMERICSERV);
 					
 					if(err != 0)
+					{
+						close(infd);
 						break;
+					}
 					
 					err = net_set_nonblocking(infd);
 					if(err < 0)
+					{
+						close(infd);
+						break;
+					}
+					
+					// Is it a real bot, does it PONG?
+					net_fdsend(infd, PING, "");
+					memset(&pktbuf, 0, sizeof(pktbuf));
+					if((buflen = read(infd, pktbuf, sizeof(pktbuf))) < 0)
+					{
+						close(infd);
+						break;
+					}
+					// If not close and break!
+					if(buflen != sizeof(struct Packet))
 					{
 						close(infd);
 						break;
@@ -185,8 +204,7 @@ void *epollEventLoop(void *_)
 					clients[infd].ipaddr = ((struct sockaddr_in*)&in_addr)->
 						sin_addr.s_addr;
 					clients[infd].connected = 1;
-					
-					net_fdsend(infd, PING, "");
+					//net_fdsend(infd, PING, "");
 				} // While
 				continue;
 			}
