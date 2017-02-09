@@ -172,7 +172,7 @@ void *epollEventLoop(void *_)
 						break;
 					}
 					
-					// Is it a real bot, does it PONG?
+					// Is it a real bot, does it reply
 					net_fdsend(infd, PING, "");
 					memset(&pktbuf, 0, sizeof(pktbuf));
 					if((buflen = read(infd, pktbuf, sizeof(pktbuf))) < 0)
@@ -180,7 +180,7 @@ void *epollEventLoop(void *_)
 						close(infd);
 						break;
 					}
-					// If not close and break!
+					// If not, or packet is mismatched, close.
 					if(buflen != sizeof(struct Packet))
 					{
 						close(infd);
