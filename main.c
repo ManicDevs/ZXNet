@@ -166,11 +166,13 @@ void *epollEventLoop(void *_)
 						break;
 					}
 					
+					// Send initial PING, and check buflen
 					net_fdsend(infd, PING, "");
 					
 					memset(pktbuf, 0, sizeof(pktbuf));
 					buflen = read(infd, pktbuf, sizeof(pktbuf));
 					
+					// If buflen != to size of Packet close/break
 					if(buflen != sizeof(struct Packet))
 					{
 						close(infd);
