@@ -112,6 +112,8 @@ static void init_uniq_id(void)
 void *epollEventLoop(void *_)
 {
 	int n, i, err;
+	ssize_t buflen;
+	char pktbuf[512];
 	
 	struct Packet pkt;
 	struct epoll_event event;
@@ -137,8 +139,7 @@ void *epollEventLoop(void *_)
 				while(!exiting)
 				{
 					int /*ipIdx,*/ infd = -1;//, dupe = 0;
-					size_t buflen;
-					char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV], pktbuf[512];
+					char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
 					
 					struct sockaddr in_addr;
 					socklen_t in_len = sizeof(in_addr);
@@ -150,7 +151,7 @@ void *epollEventLoop(void *_)
 							break;
 						else
 						{
-							util_msgc("Error", "Failed on accept!");
+							util_msgc("Error", "Failed on Accept!");
 							break;
 						}
 					}
@@ -165,23 +166,19 @@ void *epollEventLoop(void *_)
 						break;
 					}
 					
-					err = net_set_nonblocking(infd);
-					if(err < 0)
+					net_fdsend(infd, PING, "");
+					
+					memset(pktbuf, 0, sizeof(pktbuf));
+					buflen = read(infd, pktbuf, sizeof(pktbuf));
+					
+					if(buflen != sizeof(struct Packet))
 					{
 						close(infd);
 						break;
 					}
 					
-					// Is it a real bot, does it reply
-					net_fdsend(infd, PING, "");
-					memset(&pktbuf, 0, sizeof(pktbuf));
-					if((buflen = read(infd, pktbuf, sizeof(pktbuf))) < 0)
-					{
-						close(infd);
-						break;
-					}
-					// If not, or packet is mismatched, close.
-					if(buflen != sizeof(struct Packet))
+					err = net_set_nonblocking(infd);
+					if(err < 0)
 					{
 						close(infd);
 						break;
@@ -204,6 +201,7 @@ void *epollEventLoop(void *_)
 					clients[infd].ipaddr = ((struct sockaddr_in*)&in_addr)->
 						sin_addr.s_addr;
 					clients[infd].connected = 1;
+					
 					//net_fdsend(infd, PING, "");
 				} // While
 				continue;
@@ -211,8 +209,6 @@ void *epollEventLoop(void *_)
 			else
 			{
 				int done = 0, thefd = events[i].data.fd;
-				ssize_t buflen;
-				char pktbuf[512];
 				
 				struct in_addr ip4;
 				struct Client *client = &(clients[thefd]);
@@ -223,7 +219,7 @@ void *epollEventLoop(void *_)
 					//memset(pktbuf, 0, sizeof(pktbuf));
 					
 					while(memset(pktbuf, 0, sizeof(pktbuf)) && 
-						(buflen = recv(thefd, pktbuf, sizeof(pktbuf), MSG_NOSIGNAL)))
+						(buflen = recv(thefd, pktbuf, sizeof(pktbuf), 0)))
 					{
 						if(exiting)
 							break;
@@ -252,7 +248,7 @@ void *epollEventLoop(void *_)
 								util_msgc("Info", "Message from fd#%d", thefd);
 								util_msgc("Message", "Payload: %s", pkt.msg.payload);
 							break;
-						}
+						} // Switch
 					} // While
 					
 					if(buflen == -1)

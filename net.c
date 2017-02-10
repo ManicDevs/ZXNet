@@ -54,7 +54,7 @@ int net_fdbroadcast(int sockfd, int type, char *buffer)
 	pkt.msg.length = strlen(pkt.msg.payload);
 	sha256(pkt.msg.payload, pkt.msg.sha256);
 	
-	//util_strxor(pkt.msg.payload, pkt.msg.payload, pkt.msg.length);
+	util_strxor(pkt.msg.payload, pkt.msg.payload, pkt.msg.length);
 	
 	for(i = 0; i < MAXFDS; i++)
 	{
