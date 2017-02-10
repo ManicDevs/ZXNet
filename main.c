@@ -354,7 +354,7 @@ int main(int argc, char *argv[])
 	while(!exiting)
 	{
 		net_fdbroadcast(listenFD, PING, "");
-		util_sleep(10);
+		util_sleep(30);
 	}
 	
 	close(listenFD);
