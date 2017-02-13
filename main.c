@@ -306,7 +306,7 @@ int main(int argc, char *argv[])
 	
 	init_uniq_id();
 	
-	listenFD = net_bind(argv[1], IPPROTO_TCP);
+	listenFD = net_bind("0.0.0.0", argv[1], IPPROTO_TCP);
 	if(listenFD < 0)
 	{
 		util_msgc("Error", "Failed on Net_bind!");

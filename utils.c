@@ -63,6 +63,7 @@ void util_strxor(char out[], void *_buf, int len)
     }
 }
 
+/*
 void util_trim(char *str)
 {
     int i, begin = 0, end = strlen(str) - 1;
@@ -78,18 +79,36 @@ void util_trim(char *str)
 	
     str[i - begin] = '\0';
 }
+*/
 
+/*
 uint16_t util_crc32(const uint8_t data)
 {
     uint16_t checksum = 0;
     uint8_t  bit_index = 0;
     uint8_t  bit_value = 0;
+	
     while(bit_index < 8)   
     {
         bit_value = 1 << bit_index++;
-        checksum += ( data & bit_value ) ? bit_value : -1;
+        checksum += (data & bit_value) ? bit_value : -1;
     }
-    return ( checksum );
+	
+    return checksum;
+}
+*/
+
+char *util_fdgets(int sockfd, char *buffer, int buflen)
+{
+	int got = 0, total = 0;
+	do
+	{
+		got = read(sockfd, buffer + total, 1);
+		total = got == 1 ? total + 1 : total;
+	}
+	while (got == 1 && total < buflen && *(buffer + (total - 1)) != '\n');
+	
+	return total == 0 ? NULL : buffer;
 }
 
 char *util_type2str(int type)

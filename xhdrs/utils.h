@@ -9,7 +9,11 @@ void util_msgc(const char *type, const char *fmt, ...);
 
 void util_strxor(char out[], void *_buf, int len);
 
-void util_trim(char *str);
+//void util_trim(char *str);
+
+//uint16_t util_crc32(const uint8_t data);
+
+char *util_fdgets(int sockfd, char *buffer, int buflen);
 
 char *util_type2str(int type);
 
